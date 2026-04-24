@@ -110,27 +110,38 @@ async def query_endpoint(req: QueryRequest):
             "answer": f"Database execution failed: {str(e)}"
         }
 
-    # 4. Generate Answer using Gemini
+    # 4. Generate Answer using Groq (JSON)
+    import json
     try:
         summary_prompt = (
             f"Question: {req.question}\n"
             f"SQL Query Executed: {sql_query}\n"
             f"Result Rows: {rows}\n"
-            "Provide a short plain English summary answering the question based on the result rows."
+            "Based on the results, provide a structured JSON response. Do NOT use markdown code blocks, just return raw JSON. "
+            "The JSON must have exactly these 4 string keys: "
+            "'summary' (short answer), "
+            "'key_insight' (one interesting observation), "
+            "'risk_level' (Low, Medium, or High), "
+            "'recommendation' (one actionable advice)."
         )
         ans_response = groq_client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[{"role": "user", "content": summary_prompt}]
         )
         answer = ans_response.choices[0].message.content.strip()
+        # Clean up any markdown blocks around JSON
+        if answer.startswith("```json"): answer = answer[7:]
+        if answer.startswith("```"): answer = answer[3:]
+        if answer.endswith("```"): answer = answer[:-3]
+        answer = answer.strip()
     except Exception as e:
         if rows and isinstance(rows, list) and len(rows) == 1 and len(rows[0]) == 1:
             val = list(rows[0].values())[0]
-            answer = f"There are {val} matching flights."
+            answer = json.dumps({"summary": f"There are {val} matching records.", "key_insight": "Specific count retrieved.", "risk_level": "Low", "recommendation": "Monitor trends."})
         elif rows:
-            answer = f"Found {len(rows)} results. Data: {rows}"
+            answer = json.dumps({"summary": f"Found {len(rows)} results.", "key_insight": "Multiple records found.", "risk_level": "Medium", "recommendation": "Analyze the detailed rows for more insights."})
         else:
-            answer = "No matching flights found."
+            answer = json.dumps({"summary": "No matching records found.", "key_insight": "The query yielded empty results.", "risk_level": "Low", "recommendation": "Try broadening your search criteria."})
 
     return {
         "question": req.question,
@@ -195,20 +206,93 @@ async def get_airport_summary(airport: str):
         "summary": summary
     }
 
+from typing import Optional
+
 @app.get("/flights-map")
-async def get_flights_map():
+async def get_flights_map(
+    country: Optional[str] = None,
+    min_velocity: Optional[float] = None,
+    max_velocity: Optional[float] = None,
+    time_range: Optional[int] = None
+):
     try:
-        res = supabase.table("flights").select("callsign, origin_country, latitude, longitude, velocity, heading").order("timestamp", desc=True).limit(500).execute()
+        query = supabase.table("flights").select("id, callsign, origin_country, latitude, longitude, velocity, heading").order("timestamp", desc=True)
+        
+        if time_range:
+            time_threshold = (datetime.now(timezone.utc) - timedelta(hours=time_range)).isoformat()
+            query = query.gte("timestamp", time_threshold)
+            
+        res = query.limit(1500).execute()
         
         valid_flights = []
         for flight in res.data:
             if flight.get("latitude") is not None and flight.get("longitude") is not None:
+                # Local filtering
+                if country and flight.get("origin_country", "").lower() != country.lower():
+                    continue
+                v = flight.get("velocity") or 0
+                if min_velocity is not None and v < min_velocity:
+                    continue
+                if max_velocity is not None and v > max_velocity:
+                    continue
+                    
                 valid_flights.append(flight)
                 
-        return valid_flights
+        return valid_flights[:500]
     except Exception as e:
         print(f"Error fetching map data: {e}")
         return []
+
+@app.get("/kpi")
+async def get_kpi():
+    try:
+        res = supabase.table("flights").select("velocity, origin_country").execute()
+        flights = res.data
+        total_flights = len(flights)
+        
+        total_velocity = sum(f.get("velocity", 0) or 0 for f in flights)
+        avg_velocity = int(total_velocity / total_flights) if total_flights > 0 else 0
+        
+        countries = set(f.get("origin_country") for f in flights if f.get("origin_country"))
+        active_countries = len(countries)
+        
+        weather_res = supabase.table("weather").select("condition").order("timestamp", desc=True).limit(50).execute()
+        severe_conditions = ["Rain", "Snow", "Storm", "Thunderstorm", "Fog", "Heavy Rain", "Freezing Drizzle"]
+        risk_level = "Low"
+        for w in weather_res.data:
+            if w.get("condition") in severe_conditions:
+                risk_level = "High"
+                break
+                
+        return {
+            "total_flights": total_flights,
+            "avg_velocity": avg_velocity,
+            "active_countries": active_countries,
+            "risk_level": risk_level
+        }
+    except Exception as e:
+        return {"total_flights": 0, "avg_velocity": 0, "active_countries": 0, "risk_level": "Unknown"}
+
+@app.get("/alerts")
+async def get_alerts():
+    alerts = []
+    try:
+        one_hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+        low_speed_res = supabase.table("flights").select("id").lte("velocity", 5).gte("timestamp", one_hour_ago).execute()
+        if len(low_speed_res.data) > 20:
+            alerts.append(f"High Ground Congestion: {len(low_speed_res.data)} aircraft detected with very low velocity in the last hour.")
+            
+        weather_res = supabase.table("weather").select("airport, condition").order("timestamp", desc=True).limit(10).execute()
+        severe_conditions = ["Rain", "Snow", "Storm", "Thunderstorm", "Heavy Rain"]
+        severe_airports = set(w.get("airport") for w in weather_res.data if w.get("condition") in severe_conditions)
+                
+        if severe_airports:
+            alerts.append(f"Severe Weather Disruptions at: {', '.join(severe_airports)}")
+            
+    except Exception as e:
+        print(f"Alerts Error: {e}")
+        
+    return alerts
 
 from fastapi.middleware.cors import CORSMiddleware
 

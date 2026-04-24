@@ -789,7 +789,7 @@
             analyzeText.textContent = "Analyzing...";
 
             try {
-                const response = await fetch('http://127.0.0.1:8000/query', {
+                const response = await fetch('/query', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ question: question })
@@ -882,7 +882,7 @@
             airportLoading.classList.remove('hide');
 
             try {
-                const response = await fetch(`http://127.0.0.1:8000/summary/${iata}`);
+                const response = await fetch(`/summary/${iata}`);
                 if (!response.ok) throw new Error(`API Error: ${response.status}`);
 
                 const data = await response.json();
@@ -929,7 +929,7 @@
             const velocity = document.getElementById('map-velocity')?.value || "";
 
             try {
-                let url = 'http://127.0.0.1:8000/flights-map?';
+                let url = '/flights-map?';
                 if (country) url += `country=${encodeURIComponent(country)}&`;
                 if (time) url += `time_range=${encodeURIComponent(time)}&`;
                 if (velocity) url += `min_velocity=${encodeURIComponent(velocity)}&`;
@@ -992,13 +992,13 @@
         // Dashboard Init
         async function initDashboard() {
             try {
-                const kpiRes = await fetch('http://127.0.0.1:8000/kpi');
+                const kpiRes = await fetch('/kpi');
                 if (kpiRes.ok) {
                     const kpi = await kpiRes.json();
                     updateKPIs(kpi);
                 }
                 
-                const alertsRes = await fetch('http://127.0.0.1:8000/alerts');
+                const alertsRes = await fetch('/alerts');
                 if (alertsRes.ok) {
                     const alerts = await alertsRes.json();
                     const bannerContainer = document.getElementById('alert-banner-container');

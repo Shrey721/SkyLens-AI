@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+
+<html class="dark scroll-smooth" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>SkyLens AI - Flight Operations Intelligence</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline-variant": "#3b494b",
+                        "inverse-primary": "#006970",
+                        "surface-dim": "#131315",
+                        "on-tertiary": "#55006a",
+                        "surface-variant": "#353437",
+                        "on-primary": "#00363a",
+                        "primary-fixed": "#7df4ff",
+                        "on-background": "#e5e1e4",
+                        "secondary-fixed-dim": "#d0bcff",
+                        "error": "#ffb4ab",
+                        "primary-container": "#00f0ff",
+                        "surface-container": "#201f22",
+                        "surface-tint": "#00dbe9",
+                        "secondary": "#d0bcff",
+                        "on-tertiary-container": "#9f00c2",
+                        "on-error": "#690005",
+                        "inverse-surface": "#e5e1e4",
+                        "on-tertiary-fixed": "#340042",
+                        "surface-container-highest": "#353437",
+                        "on-surface-variant": "#b9cacb",
+                        "surface-container-high": "#2a2a2c",
+                        "surface": "#131315",
+                        "inverse-on-surface": "#313032",
+                        "primary": "#dbfcff",
+                        "on-primary-container": "#006970",
+                        "on-secondary": "#3c0091",
+                        "tertiary-fixed": "#fdd6ff",
+                        "surface-container-low": "#1c1b1d",
+                        "tertiary-container": "#fac9ff",
+                        "on-error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#004f54",
+                        "secondary-fixed": "#e9ddff",
+                        "tertiary": "#fff2fb",
+                        "background": "#131315",
+                        "surface-bright": "#39393b",
+                        "error-container": "#93000a",
+                        "on-surface": "#e5e1e4",
+                        "on-secondary-fixed-variant": "#5516be",
+                        "secondary-container": "#571bc1",
+                        "surface-container-lowest": "#0e0e10",
+                        "tertiary-fixed-dim": "#f4aeff",
+                        "primary-fixed-dim": "#00dbe9",
+                        "on-secondary-container": "#c4abff",
+                        "outline": "#849495",
+                        "on-secondary-fixed": "#23005c",
+                        "on-primary-fixed": "#002022",
+                        "on-tertiary-fixed-variant": "#790095"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1.25rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "24px",
+                        "unit": "8px",
+                        "container-margin": "32px",
+                        "card-padding": "24px",
+                        "input-height": "48px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "title-sm": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "headline-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", { "lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400" }],
+                        "display-lg": ["48px", { "lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "700" }],
+                        "title-sm": ["20px", { "lineHeight": "1.4", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "label-caps": ["12px", { "lineHeight": "1.2", "letterSpacing": "0.1em", "fontWeight": "700" }],
+                        "headline-md": ["32px", { "lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Glassmorphism Utilities */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+        }
+
+        .glass-panel-heavy {
+            background: rgba(20, 20, 25, 0.6);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-image: linear-gradient(to bottom right, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.02)) 1;
+        }
+
+        .neon-glow {
+            box-shadow: 0 0 20px rgba(0, 219, 233, 0.2);
+        }
+
+        .neon-text-glow {
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+        }
+
+        /* Loading Skeleton */
+        .skeleton {
+            background: linear-gradient(90deg, rgba(255, 255, 255, 0.05) 25%, rgba(255, 255, 255, 0.1) 50%, rgba(255, 255, 255, 0.05) 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+
+        @keyframes loading {
+            0% {
+                background-position: 200% 0;
+            }
+
+            100% {
+                background-position: -200% 0;
+            }
+        }
+
+        .hide {
+            display: none !important;
+        }
+
+        /* Leaflet custom dark theme overrides */
+        .leaflet-container {
+            background: #0e0e10 !important;
+            font-family: 'Inter', sans-serif;
+            z-index: 10;
+        }
+        .leaflet-popup-content-wrapper, .leaflet-popup-tip {
+            background: rgba(20, 20, 25, 0.9) !important;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            color: #e5e1e4 !important;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.1);
+        }
+        .glow-marker {
+            background: #00f0ff;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #00f0ff, 0 0 20px #00f0ff;
+            border: 2px solid #fff;
+        }
+    </style>
+</head>
+
+<body class="bg-background text-on-surface font-body-md overflow-x-hidden min-h-screen">
+    <!-- Top Navigation Shell (Web Only) -->
+    <nav
+        class="hidden md:flex fixed top-0 w-full z-50 justify-between items-center px-8 h-16 bg-slate-950/40 backdrop-blur-2xl border-b border-white/10 shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
+        <div class="flex items-center gap-8">
+            <div
+                class="font-display-lg text-xl font-black tracking-tighter text-primary-container drop-shadow-[0_0_8px_rgba(0,240,255,0.5)]">
+                SkyLens AI
+            </div>
+        </div>
+    </nav>
+    <!-- Side Navigation Shell (Web Only) -->
+    <aside
+        class="hidden md:flex fixed left-0 top-16 bottom-0 flex-col pt-8 bg-slate-950/60 backdrop-blur-3xl border-r border-white/5 w-64 shadow-2xl shadow-cyan-900/10 z-40">
+        <div class="px-6 mb-8 flex items-center gap-3">
+            <div
+                class="w-10 h-10 rounded-lg bg-surface-container-high border border-outline-variant flex items-center justify-center neon-glow">
+                <span class="material-symbols-outlined text-primary-container">dns</span>
+            </div>
+            <div>
+                <div class="font-title-sm text-sm text-on-surface">System Alpha</div>
+                <div class="font-label-caps text-[10px] text-outline">Live Monitoring</div>
+            </div>
+        </div>
+        <nav class="flex-1 flex flex-col gap-1 font-body-md text-sm font-medium">
+            <a class="bg-cyan-500/10 text-primary-container border-r-2 border-primary-container shadow-[inset_0_0_15px_rgba(0,240,255,0.1)] flex items-center gap-3 px-6 py-4 transition-all duration-200 ease-in-out"
+                href="#insights">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">grid_view</span>
+                Insights
+            </a>
+            <a class="text-outline hover:bg-white/5 hover:text-on-surface flex items-center gap-3 px-6 py-4 transition-all duration-200 ease-in-out"
+                href="#airport-summary">
+                <span class="material-symbols-outlined">radar</span>
+                Airport Summary
+            </a>
+            <a class="text-outline hover:bg-white/5 hover:text-on-surface flex items-center gap-3 px-6 py-4 transition-all duration-200 ease-in-out"
+                href="#data-sources">
+                <span class="material-symbols-outlined">database</span>
+                Data Sources
+            </a>
+            <a class="text-outline hover:bg-white/5 hover:text-on-surface flex items-center gap-3 px-6 py-4 transition-all duration-200 ease-in-out"
+                href="#live-map">
+                <span class="material-symbols-outlined">map</span>
+                Live Map
+            </a>
+        </nav>
+    </aside>
+    <!-- Main Canvas -->
+    <main class="md:ml-64 md:pt-16 min-h-screen flex flex-col relative">
+        <!-- Cinematic Hero Background Layer -->
+        <div class="fixed inset-0 z-[-1] bg-surface-dim">
+            <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&amp;fit=crop&amp;q=80&amp;w=2000')] bg-cover bg-center opacity-60"
+                data-alt="view from an airplane window above the clouds at dusk with deep blue and purple hues"></div>
+            <div class="absolute inset-0 bg-gradient-to-b from-surface-dim/40 via-surface-dim/70 to-surface-dim/90">
+            </div>
+            <div
+                class="absolute top-0 left-1/4 w-1/2 h-64 bg-primary-container/20 blur-[120px] rounded-full mix-blend-screen opacity-50">
+            </div>
+        </div>
+        <!-- Dashboard Content -->
+        <div class="flex-1 w-full max-w-7xl mx-auto p-container-margin flex flex-col gap-12 mt-12">
+            <!-- Hero Header -->
+            <header class="flex flex-col items-center text-center space-y-6 max-w-3xl mx-auto mb-8" id="insights">
+                <h1 class="font-display-lg text-display-lg text-on-surface neon-text-glow">
+                    SkyLens AI
+                </h1>
+                <p class="font-title-sm text-title-sm text-on-surface-variant max-w-2xl">
+                    Ask natural questions about flight operations, weather impact, and airport performance.
+                </p>
+                <!-- Main Query Input -->
+                <div class="w-full relative mt-8">
+                    <div class="absolute inset-0 bg-primary-container/5 blur-xl rounded-full"></div>
+                    <div
+                        class="relative flex items-center bg-surface-container/60 backdrop-blur-xl border border-outline-variant/50 rounded-full p-2 focus-within:border-primary-container/50 focus-within:shadow-[0_0_15px_rgba(0,240,255,0.15)] transition-all">
+                        <div class="pl-6 text-primary-container flex items-center">
+                            <span class="material-symbols-outlined">search</span>
+                        </div>
+                        <input
+                            class="flex-1 bg-transparent border-none text-on-surface font-body-md text-body-md focus:ring-0 placeholder:text-outline px-4 h-12"
+                            id="query-input" placeholder="Ask something like: How many flights are from India?"
+                            type="text" />
+                        <button
+                            class="bg-gradient-to-r from-primary-fixed-dim to-secondary-container text-background font-title-sm text-sm px-8 py-3 rounded-full hover:shadow-[0_0_20px_rgba(0,219,233,0.3)] transition-all flex items-center gap-2"
+                            id="analyze-btn">
+                            <span class="material-symbols-outlined text-[18px]">auto_awesome</span>
+                            Analyze
+                        </button>
+                    </div>
+                </div>
+                <div class="text-error font-body-md text-sm mt-2 hide" id="query-error"></div>
+            </header>
+            <!-- Grid Layout for Results & Modules -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+                <!-- Left Column: Query Results -->
+                <div class="lg:col-span-8 flex flex-col gap-6">
+                    <!-- Loading Skeleton for Query Results -->
+                    <div class="flex flex-col gap-6 hide" id="query-loading">
+                        <section class="glass-panel rounded-2xl p-card-padding">
+                            <div class="flex items-start gap-4">
+                                <div class="w-10 h-10 rounded-full skeleton flex-shrink-0"></div>
+                                <div class="space-y-2 w-full">
+                                    <div class="h-6 skeleton rounded w-1/4"></div>
+                                    <div class="h-16 skeleton rounded w-full"></div>
+                                </div>
+                            </div>
+                        </section>
+                        <section class="glass-panel-heavy rounded-2xl p-card-padding h-64 skeleton"></section>
+                    </div>
+                    <!-- Results Container (Hidden initially) -->
+                    <div class="flex flex-col gap-6 hide" id="query-results">
+                        <!-- Answer Card (Glass) -->
+                        <section class="glass-panel rounded-2xl p-card-padding relative overflow-hidden">
+                            <div
+                                class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary-container to-transparent opacity-50">
+                            </div>
+                            <div class="flex items-start gap-4">
+                                <div
+                                    class="w-10 h-10 rounded-full bg-primary-container/10 flex items-center justify-center flex-shrink-0 border border-primary-container/20">
+                                    <span class="material-symbols-outlined text-primary-container">neurology</span>
+                                </div>
+                                <div class="space-y-2 w-full">
+                                    <h3 class="font-title-sm text-title-sm text-on-surface">Analysis Complete</h3>
+                                    <p class="font-body-md text-body-md text-on-surface-variant" id="query-answer"></p>
+                                </div>
+                            </div>
+                        </section>
+                        <!-- Data Visualization Area -->
+                        <section class="glass-panel-heavy rounded-2xl p-card-padding flex flex-col gap-6"
+                            id="chart-section">
+                            <div class="flex items-center justify-between">
+                                <h3 class="font-title-sm text-sm text-on-surface uppercase tracking-wider">Data
+                                    Visualization</h3>
+                            </div>
+                            <div class="h-64 relative w-full">
+                                <canvas id="results-chart"></canvas>
+                                <div class="absolute inset-0 flex items-center justify-center hide"
+                                    id="chart-empty-state">
+                                    <p class="text-outline font-body-md">No chartable numeric data found in results.</p>
+                                </div>
+                            </div>
+                        </section>
+                        <!-- Data Table Area -->
+                        <section class="glass-panel rounded-2xl p-card-padding overflow-x-auto hide" id="table-section">
+                            <h3 class="font-title-sm text-sm text-on-surface uppercase tracking-wider mb-4">Raw Data
+                            </h3>
+                            <table class="w-full text-left border-collapse" id="results-table">
+                                <thead
+                                    class="font-label-caps text-[10px] text-outline border-b border-outline-variant/30"
+                                    id="results-table-head">
+                                </thead>
+                                <tbody class="font-body-md text-sm text-on-surface-variant" id="results-table-body">
+                                </tbody>
+                            </table>
+                        </section>
+                        <!-- SQL Block (Collapsible) -->
+                        <section class="glass-panel rounded-xl p-0 overflow-hidden border-outline-variant/30">
+                            <button
+                                class="w-full bg-surface-container-highest px-4 py-3 border-b border-outline-variant/30 flex justify-between items-center hover:bg-surface-container transition-colors"
+                                id="sql-toggle">
+                                <span class="font-label-caps text-[10px] text-outline">Generated Query</span>
+                                <span
+                                    class="material-symbols-outlined text-outline text-[16px] transition-transform duration-200"
+                                    id="sql-chevron">expand_more</span>
+                            </button>
+                            <div class="p-4 bg-surface-lowest font-mono text-sm text-secondary-fixed-dim hide"
+                                id="sql-content">
+                            </div>
+                        </section>
+                    </div>
+                </div>
+                <!-- Right Column: Contextual Tools (Airport Weather) -->
+                <div class="lg:col-span-4 flex flex-col gap-6" id="airport-summary">
+                    <section class="glass-panel-heavy rounded-2xl p-card-padding relative">
+                        <div
+                            class="absolute -top-10 -right-10 w-32 h-32 bg-secondary-container/20 blur-2xl rounded-full pointer-events-none">
+                        </div>
+                        <h2 class="font-title-sm text-title-sm text-on-surface mb-6 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-secondary">radar</span>
+                            Airport Status
+                        </h2>
+                        <!-- Input -->
+                        <div class="relative mb-6">
+                            <input
+                                class="w-full bg-surface-container/50 border border-outline-variant/50 rounded-lg px-4 h-input-height text-on-surface font-body-md focus:border-secondary focus:ring-1 focus:ring-secondary uppercase placeholder:normal-case placeholder:text-outline/50"
+                                id="airport-input" placeholder="Enter 3-letter IATA (e.g. DEL)" type="text" />
+                            <button
+                                class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-outline hover:text-secondary transition-colors"
+                                id="airport-search-btn">
+                                <span class="material-symbols-outlined text-[20px]">search</span>
+                            </button>
+                        </div>
+                        <div class="text-error font-body-md text-sm mb-4 hide" id="airport-error"></div>
+                        <!-- Loading Skeleton for Airport -->
+                        <div class="bg-surface-container-low/50 rounded-xl p-4 border border-white/5 space-y-4 hide"
+                            id="airport-loading">
+                            <div class="h-8 skeleton w-1/3 rounded"></div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="h-12 skeleton rounded"></div>
+                                <div class="h-12 skeleton rounded"></div>
+                            </div>
+                            <div class="h-20 skeleton rounded mt-4"></div>
+                        </div>
+                        <!-- Result Card -->
+                        <div class="bg-surface-container-low/50 rounded-xl p-4 border border-white/5 space-y-4 hide"
+                            id="airport-result">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <div class="font-display-lg text-2xl text-on-surface" id="airport-code"></div>
+                                    <div class="font-label-caps text-[10px] text-outline">Airport Summary</div>
+                                </div>
+                                <div
+                                    class="px-2 py-1 rounded bg-error/10 border border-error/20 flex items-center gap-1">
+                                    <div class="w-2 h-2 rounded-full bg-error animate-pulse"></div>
+                                    <span class="font-label-caps text-[10px] text-error">Live</span>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="space-y-1">
+                                    <div class="font-label-caps text-[10px] text-outline flex items-center gap-1"><span
+                                            class="material-symbols-outlined text-[14px]">thermostat</span> Weather
+                                    </div>
+                                    <div class="font-title-sm text-sm text-on-surface-variant" id="airport-weather">
+                                    </div>
+                                </div>
+                                <div class="space-y-1">
+                                    <div class="font-label-caps text-[10px] text-outline flex items-center gap-1"><span
+                                            class="material-symbols-outlined text-[14px]">flight_land</span> Grounded
+                                    </div>
+                                    <div class="font-title-sm text-sm text-error" id="airport-grounded"></div>
+                                </div>
+                            </div>
+                            <div class="pt-4 border-t border-outline-variant/30">
+                                <p class="font-body-md text-sm text-on-surface-variant leading-relaxed">
+                                    <strong class="text-secondary">AI Summary:</strong> <span
+                                        id="airport-summary-text"></span>
+                                </p>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+            
+            <!-- Live Map Section -->
+            <div class="mt-12" id="live-map">
+                <h2 class="font-title-sm text-title-sm text-on-surface mb-6 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-outline">map</span>
+                    Live Global Flights
+                </h2>
+                <div class="glass-panel-heavy rounded-2xl p-card-padding relative overflow-hidden">
+                    <div id="flight-map" class="w-full h-[500px] rounded-xl relative z-10"></div>
+                </div>
+            </div>
+
+            <!-- Data Sources Section -->
+            <div class="mt-12 mb-24" id="data-sources">
+                <h2 class="font-title-sm text-title-sm text-on-surface mb-6 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-outline">database</span>
+                    Connected Data Sources
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- Source Card -->
+                    <div
+                        class="glass-panel rounded-2xl p-6 flex flex-col gap-4 border border-outline-variant/30 hover:border-primary-container/50 transition-colors">
+                        <div class="flex items-center justify-between">
+                            <div
+                                class="w-10 h-10 rounded bg-surface-container flex items-center justify-center border border-outline-variant">
+                                <span class="material-symbols-outlined text-primary-fixed-dim">flight</span>
+                            </div>
+                            <span
+                                class="px-2 py-1 rounded bg-primary-container/10 border border-primary-container/20 text-primary-container font-label-caps text-[10px] flex items-center gap-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span> Connected
+                            </span>
+                        </div>
+                        <div>
+                            <h4 class="font-title-sm text-sm text-on-surface">OpenSky API</h4>
+                            <p class="font-body-md text-xs text-outline mt-1">Real-time global flight tracking data.</p>
+                        </div>
+                    </div>
+                    <!-- Source Card -->
+                    <div
+                        class="glass-panel rounded-2xl p-6 flex flex-col gap-4 border border-outline-variant/30 hover:border-primary-container/50 transition-colors">
+                        <div class="flex items-center justify-between">
+                            <div
+                                class="w-10 h-10 rounded bg-surface-container flex items-center justify-center border border-outline-variant">
+                                <span class="material-symbols-outlined text-secondary-fixed-dim">cloud</span>
+                            </div>
+                            <span
+                                class="px-2 py-1 rounded bg-primary-container/10 border border-primary-container/20 text-primary-container font-label-caps text-[10px] flex items-center gap-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span> Connected
+                            </span>
+                        </div>
+                        <div>
+                            <h4 class="font-title-sm text-sm text-on-surface">Open-Meteo API</h4>
+                            <p class="font-body-md text-xs text-outline mt-1">Live weather conditions and forecasts.</p>
+                        </div>
+                    </div>
+                    <!-- Source Card -->
+                    <div
+                        class="glass-panel rounded-2xl p-6 flex flex-col gap-4 border border-outline-variant/30 hover:border-primary-container/50 transition-colors">
+                        <div class="flex items-center justify-between">
+                            <div
+                                class="w-10 h-10 rounded bg-surface-container flex items-center justify-center border border-outline-variant">
+                                <span class="material-symbols-outlined text-tertiary-fixed-dim">public</span>
+                            </div>
+                            <span
+                                class="px-2 py-1 rounded bg-primary-container/10 border border-primary-container/20 text-primary-container font-label-caps text-[10px] flex items-center gap-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span> Connected
+                            </span>
+                        </div>
+                        <div>
+                            <h4 class="font-title-sm text-sm text-on-surface">OpenFlights Dataset</h4>
+                            <p class="font-body-md text-xs text-outline mt-1">Comprehensive airport and route data.</p>
+                        </div>
+                    </div>
+                    <!-- Source Card -->
+                    <div
+                        class="glass-panel rounded-2xl p-6 flex flex-col gap-4 border border-outline-variant/30 hover:border-primary-container/50 transition-colors">
+                        <div class="flex items-center justify-between">
+                            <div
+                                class="w-10 h-10 rounded bg-surface-container flex items-center justify-center border border-outline-variant">
+                                <span class="material-symbols-outlined text-[#3ECF8E]">storage</span>
+                            </div>
+                            <span
+                                class="px-2 py-1 rounded bg-primary-container/10 border border-primary-container/20 text-primary-container font-label-caps text-[10px] flex items-center gap-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span> Connected
+                            </span>
+                        </div>
+                        <div>
+                            <h4 class="font-title-sm text-sm text-on-surface">Supabase</h4>
+                            <p class="font-body-md text-xs text-outline mt-1">Persistent database storage and caching.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    <!-- Bottom Navigation Shell (Mobile Only) -->
+    <nav
+        class="md:hidden fixed bottom-0 w-full z-50 bg-slate-950/80 backdrop-blur-3xl border-t border-white/10 flex justify-around items-center h-16 pb-safe">
+        <a class="flex flex-col items-center gap-1 text-primary-container p-2" href="#insights">
+            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">grid_view</span>
+            <span class="font-label-caps text-[10px]">Insights</span>
+        </a>
+        <a class="flex flex-col items-center gap-1 text-outline hover:text-on-surface p-2" href="#airport-summary">
+            <span class="material-symbols-outlined">radar</span>
+            <span class="font-label-caps text-[10px]">Airport</span>
+        </a>
+        <a class="flex flex-col items-center gap-1 text-outline hover:text-on-surface p-2" href="#data-sources">
+            <span class="material-symbols-outlined">database</span>
+            <span class="font-label-caps text-[10px]">Data</span>
+        </a>
+        <a class="flex flex-col items-center gap-1 text-outline hover:text-on-surface p-2" href="#live-map">
+            <span class="material-symbols-outlined">map</span>
+            <span class="font-label-caps text-[10px]">Map</span>
+        </a>
+    </nav>
+    <script>
+        // --- Chart.js Configuration ---
+        Chart.defaults.color = '#e5e1e4';
+        Chart.defaults.font.family = 'Inter';
+        let resultsChartInstance = null;
+
+        function renderChart(rows) {
+            const ctx = document.getElementById('results-chart').getContext('2d');
+            const emptyState = document.getElementById('chart-empty-state');
+
+            if (resultsChartInstance) {
+                resultsChartInstance.destroy();
+            }
+
+            if (!rows || rows.length === 0) {
+                emptyState.classList.remove('hide');
+                return;
+            }
+
+            // Extremely naive heuristic to find label and value columns
+            const keys = Object.keys(rows[0]);
+            let valueKey = keys.find(k => k.toLowerCase().includes('count') || k.toLowerCase().includes('total') || typeof rows[0][k] === 'number');
+            let labelKey = keys.find(k => k !== valueKey);
+
+            // Fallback
+            if (!valueKey && keys.length > 0) valueKey = keys[0];
+            if (!labelKey && keys.length > 1) labelKey = keys[1];
+            else if (!labelKey && keys.length > 0) labelKey = keys[0];
+
+            // Ensure we actually have numeric data to plot, or at least try
+            let hasNumeric = rows.some(r => !isNaN(parseFloat(r[valueKey])));
+
+            if (!hasNumeric || rows.length < 2) {
+                emptyState.classList.remove('hide');
+                if (resultsChartInstance) resultsChartInstance.destroy(); // clear canvas
+                return;
+            }
+
+            emptyState.classList.add('hide');
+
+            const labels = rows.map(r => String(r[labelKey]).substring(0, 15));
+            const data = rows.map(r => parseFloat(r[valueKey]) || 0);
+
+            resultsChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: valueKey,
+                        data: data,
+                        backgroundColor: 'rgba(0, 219, 233, 0.6)',
+                        borderColor: 'rgba(0, 219, 233, 1)',
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(132, 148, 149, 0.1)' }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderTable(rows) {
+            const tableSection = document.getElementById('table-section');
+            const thead = document.getElementById('results-table-head');
+            const tbody = document.getElementById('results-table-body');
+
+            thead.innerHTML = '';
+            tbody.innerHTML = '';
+
+            if (!rows || rows.length === 0) {
+                tableSection.classList.add('hide');
+                return;
+            }
+
+            tableSection.classList.remove('hide');
+            const keys = Object.keys(rows[0]);
+
+            // Header
+            const headerRow = document.createElement('tr');
+            keys.forEach(key => {
+                const th = document.createElement('th');
+                th.className = 'py-3 px-4';
+                th.textContent = key;
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+
+            // Body
+            rows.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.className = 'border-b border-outline-variant/10 hover:bg-white/5 transition-colors';
+                keys.forEach(key => {
+                    const td = document.createElement('td');
+                    td.className = 'py-3 px-4';
+                    td.textContent = row[key];
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+        }
+
+        // --- Query Logic ---
+        const analyzeBtn = document.getElementById('analyze-btn');
+        const queryInput = document.getElementById('query-input');
+        const queryError = document.getElementById('query-error');
+        const queryLoading = document.getElementById('query-loading');
+        const queryResults = document.getElementById('query-results');
+        const queryAnswer = document.getElementById('query-answer');
+        const sqlContent = document.getElementById('sql-content');
+
+        async function handleQuery() {
+            const question = queryInput.value.trim();
+            if (!question) return;
+
+            queryError.classList.add('hide');
+            queryResults.classList.add('hide');
+            queryLoading.classList.remove('hide');
+
+            try {
+                const response = await fetch('http://127.0.0.1:8000/query', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question: question })
+                });
+
+                if (!response.ok) throw new Error(`API Error: ${response.status}`);
+
+                const data = await response.json();
+
+                queryAnswer.innerHTML = data.answer || 'No answer provided.';
+
+                // Highlight SQL roughly
+                if (data.generated_sql) {
+                    const formattedSql = data.generated_sql
+                        .replace(/SELECT|FROM|WHERE|AND|OR|JOIN|LEFT|RIGHT|INNER|ON|GROUP BY|ORDER BY|LIMIT|AS/gi, match => `<span class="text-primary-container">${match}</span>`)
+                        .replace(/'[^']*'/g, match => `<span class="text-tertiary-fixed-dim">${match}</span>`);
+                    sqlContent.innerHTML = formattedSql.replace(/\n/g, '<br>');
+                } else {
+                    sqlContent.innerHTML = 'No SQL generated.';
+                }
+
+                renderChart(data.rows);
+                renderTable(data.rows);
+
+                queryLoading.classList.add('hide');
+                queryResults.classList.remove('hide');
+
+            } catch (error) {
+                queryLoading.classList.add('hide');
+                queryError.textContent = error.message;
+                queryError.classList.remove('hide');
+            }
+        }
+
+        analyzeBtn.addEventListener('click', handleQuery);
+        queryInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleQuery();
+        });
+
+        // SQL Toggle Logic
+        const sqlToggle = document.getElementById('sql-toggle');
+        const sqlChevron = document.getElementById('sql-chevron');
+        sqlToggle.addEventListener('click', () => {
+            sqlContent.classList.toggle('hide');
+            sqlChevron.style.transform = sqlContent.classList.contains('hide') ? 'rotate(0deg)' : 'rotate(180deg)';
+        });
+
+        // --- Airport Summary Logic ---
+        const airportInput = document.getElementById('airport-input');
+        const airportSearchBtn = document.getElementById('airport-search-btn');
+        const airportError = document.getElementById('airport-error');
+        const airportLoading = document.getElementById('airport-loading');
+        const airportResult = document.getElementById('airport-result');
+
+        async function handleAirportSummary() {
+            const iata = airportInput.value.trim().toUpperCase();
+            if (!iata) return;
+
+            airportError.classList.add('hide');
+            airportResult.classList.add('hide');
+            airportLoading.classList.remove('hide');
+
+            try {
+                const response = await fetch(`http://127.0.0.1:8000/summary/${iata}`);
+                if (!response.ok) throw new Error(`API Error: ${response.status}`);
+
+                const data = await response.json();
+
+                document.getElementById('airport-code').textContent = iata;
+                document.getElementById('airport-weather').textContent = data.weather || 'Unknown';
+                document.getElementById('airport-grounded').textContent = `${data.grounded_flights || 0} Flights`;
+                document.getElementById('airport-summary-text').textContent = data.summary || 'No summary available.';
+
+                airportLoading.classList.add('hide');
+                airportResult.classList.remove('hide');
+
+            } catch (error) {
+                airportLoading.classList.add('hide');
+                airportError.textContent = error.message;
+                airportError.classList.remove('hide');
+            }
+        }
+
+        airportSearchBtn.addEventListener('click', handleAirportSummary);
+        airportInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleAirportSummary();
+        });
+
+        // --- Live Map Logic ---
+        let flightMap = null;
+
+        async function initMap() {
+            if (flightMap) return; // Already initialized
+
+            // Initialize map centered roughly on Europe/Asia
+            flightMap = L.map('flight-map').setView([30, 20], 3);
+
+            // Add CartoDB Dark Matter tiles
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> contributors',
+                subdomains: 'abcd',
+                maxZoom: 20
+            }).addTo(flightMap);
+
+            try {
+                const response = await fetch('http://127.0.0.1:8000/flights-map');
+                if (!response.ok) throw new Error('Failed to fetch flight data');
+                
+                const flights = await response.json();
+                
+                flights.forEach(flight => {
+                    if (flight.latitude && flight.longitude) {
+                        // Create custom glowing icon
+                        const glowIcon = L.divIcon({
+                            className: 'glow-marker',
+                            iconSize: [8, 8],
+                            iconAnchor: [4, 4]
+                        });
+
+                        const marker = L.marker([flight.latitude, flight.longitude], { icon: glowIcon }).addTo(flightMap);
+                        
+                        const popupContent = `
+                            <div class="space-y-1 p-1 font-body-md text-sm">
+                                <div class="font-title-sm text-primary-container">${flight.callsign || 'UNKNOWN'}</div>
+                                <div class="text-outline text-xs">Origin: <span class="text-on-surface">${flight.origin_country || 'N/A'}</span></div>
+                                <div class="text-outline text-xs">Velocity: <span class="text-on-surface">${flight.velocity ? flight.velocity + ' m/s' : 'N/A'}</span></div>
+                                <div class="text-outline text-xs">Heading: <span class="text-on-surface">${flight.heading ? flight.heading + '°' : 'N/A'}</span></div>
+                            </div>
+                        `;
+                        
+                        marker.bindPopup(popupContent);
+                    }
+                });
+            } catch (error) {
+                console.error("Map Error:", error);
+            }
+        }
+
+        // Initialize map after page load
+        document.addEventListener('DOMContentLoaded', () => {
+            initMap();
+        });
+
+    </script>
+</body>
+
+</html>

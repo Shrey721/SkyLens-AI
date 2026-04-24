@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+supabase
+python-dotenv
+requests
+groq
+psycopg2-binary

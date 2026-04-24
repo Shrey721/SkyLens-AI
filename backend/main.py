@@ -228,8 +228,10 @@ async def get_flights_map(
         for flight in res.data:
             if flight.get("latitude") is not None and flight.get("longitude") is not None:
                 # Local filtering
-                if country and flight.get("origin_country", "").lower() != country.lower():
-                    continue
+                if country:
+                    origin = flight.get("origin_country") or ""
+                    if origin.lower() != country.lower():
+                        continue
                 v = flight.get("velocity") or 0
                 if min_velocity is not None and v < min_velocity:
                     continue

@@ -763,6 +763,19 @@
             });
         }
 
+        function updateKPIs(kpi) {
+            document.getElementById('kpi-flights').textContent = kpi.total_flights !== undefined ? kpi.total_flights : '-';
+            document.getElementById('kpi-velocity').textContent = kpi.avg_velocity !== undefined && kpi.avg_velocity !== '-' ? kpi.avg_velocity + ' m/s' : '-';
+            document.getElementById('kpi-countries').textContent = kpi.active_countries !== undefined ? kpi.active_countries : '-';
+            
+            const riskEl = document.getElementById('kpi-risk');
+            riskEl.textContent = kpi.risk_level || '-';
+            if (kpi.risk_level === 'High') riskEl.className = 'font-display-lg text-2xl text-error';
+            else if (kpi.risk_level === 'Medium') riskEl.className = 'font-display-lg text-2xl text-secondary';
+            else if (kpi.risk_level === 'Low') riskEl.className = 'font-display-lg text-2xl text-primary-container';
+            else riskEl.className = 'font-display-lg text-2xl text-on-surface';
+        }
+
         async function handleQuery() {
             const question = queryInput.value.trim();
             if (!question) return;
@@ -785,6 +798,12 @@
                 if (!response.ok) throw new Error(`API Error: ${response.status}`);
 
                 const data = await response.json();
+                
+                if (data.metrics) {
+                    updateKPIs(data.metrics);
+                } else {
+                    updateKPIs({total_flights: '-', avg_velocity: '-', active_countries: '-', risk_level: '-'});
+                }
 
                 try {
                     const parsed = JSON.parse(data.answer);
@@ -976,15 +995,7 @@
                 const kpiRes = await fetch('http://127.0.0.1:8000/kpi');
                 if (kpiRes.ok) {
                     const kpi = await kpiRes.json();
-                    document.getElementById('kpi-flights').textContent = kpi.total_flights || 0;
-                    document.getElementById('kpi-velocity').textContent = kpi.avg_velocity ? kpi.avg_velocity + ' m/s' : '0 m/s';
-                    document.getElementById('kpi-countries').textContent = kpi.active_countries || 0;
-                    
-                    const riskEl = document.getElementById('kpi-risk');
-                    riskEl.textContent = kpi.risk_level || 'Unknown';
-                    if (kpi.risk_level === 'High') riskEl.className = 'font-display-lg text-2xl text-error';
-                    else if (kpi.risk_level === 'Medium') riskEl.className = 'font-display-lg text-2xl text-secondary';
-                    else riskEl.className = 'font-display-lg text-2xl text-primary-container';
+                    updateKPIs(kpi);
                 }
                 
                 const alertsRes = await fetch('http://127.0.0.1:8000/alerts');

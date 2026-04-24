@@ -43,7 +43,7 @@ async def test_db():
 @app.post("/query")
 async def query_endpoint(req: QueryRequest):
     if not groq_client:
-        return {"question": req.question, "generated_sql": "", "rows": [], "answer": "GROQ_API_KEY is missing."}
+        return {"question": req.question, "generated_sql": "", "rows": [], "answer": "GROQ_API_KEY is missing.", "metrics": {"total_flights": 0, "avg_velocity": 0, "active_countries": 0, "risk_level": "Unknown"}}
 
     # 1. Generate SQL from Groq
     try:
@@ -92,7 +92,8 @@ async def query_endpoint(req: QueryRequest):
             "question": req.question,
             "generated_sql": sql_query,
             "rows": [],
-            "answer": "DATABASE_URL is not set in the environment."
+            "answer": "DATABASE_URL is not set in the environment.",
+            "metrics": {"total_flights": 0, "avg_velocity": 0, "active_countries": 0, "risk_level": "Unknown"}
         }
 
     try:
@@ -107,7 +108,8 @@ async def query_endpoint(req: QueryRequest):
             "question": req.question,
             "generated_sql": sql_query,
             "rows": [],
-            "answer": f"Database execution failed: {str(e)}"
+            "answer": f"Database execution failed: {str(e)}",
+            "metrics": {"total_flights": 0, "avg_velocity": 0, "active_countries": 0, "risk_level": "Unknown"}
         }
 
     # 4. Generate Answer using Groq (JSON)
@@ -143,11 +145,42 @@ async def query_endpoint(req: QueryRequest):
         else:
             answer = json.dumps({"summary": "No matching records found.", "key_insight": "The query yielded empty results.", "risk_level": "Low", "recommendation": "Try broadening your search criteria."})
 
+    # 5. Compute Metrics
+    total_flights = 0
+    avg_velocity = 0
+    active_countries = 0
+    risk_level = "Low"
+    
+    if rows and isinstance(rows, list):
+        if len(rows) == 1 and len(rows[0]) == 1 and str(list(rows[0].values())[0]).isdigit():
+            total_flights = int(list(rows[0].values())[0])
+        else:
+            total_flights = len(rows)
+            velocities = [r.get("velocity") for r in rows if isinstance(r, dict) and r.get("velocity") is not None]
+            if velocities:
+                avg_velocity = int(sum(velocities) / len(velocities))
+                low_v = sum(1 for v in velocities if v < 50)
+                if low_v > len(velocities) * 0.5:
+                    risk_level = "High"
+                elif low_v > 0:
+                    risk_level = "Medium"
+            
+            countries = set(r.get("origin_country") for r in rows if isinstance(r, dict) and r.get("origin_country"))
+            active_countries = len(countries)
+
+    metrics = {
+        "total_flights": total_flights,
+        "avg_velocity": avg_velocity,
+        "active_countries": active_countries,
+        "risk_level": risk_level
+    }
+
     return {
         "question": req.question,
         "generated_sql": sql_query,
         "rows": rows,
-        "answer": answer
+        "answer": answer,
+        "metrics": metrics
     }
 
 @app.get("/summary/{airport}")
